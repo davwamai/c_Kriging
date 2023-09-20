@@ -46,6 +46,31 @@ void OrdinaryKriging::MatrixSetup() {
     // TODO: rest of the method
 }
 
+void OrdinaryKriging::MatrixSetup() {
+    double distances[points.size()][points.size()];
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = 0; j < points.size(); j++) {
+            distances[i][j] = sqrt(pow(points[i][0] - points[j][0], 2) + pow(points[i][1] - points[j][1], 2) / pow(anisotropy_factor, 2));
+        }
+    }
+    vVariogram.set_a_C(a, C);
+    double result[points.size() + 1][points.size() + 1];
+    for (int i = 0; i < points.size(); i++) {
+        for (int j = 0; j < points.size(); j++) {
+            result[i][j] = vVariogram(distances[i][j]);
+        }
+    }
+    for (int i = 0; i < points.size() + 1; i++) {
+        result[i][points.size()] = 1;
+        result[points.size()][i] = 1;
+    }
+    result[points.size()][points.size()] = 0;
+    for (int i = 0; i < points.size() + 1; i++) {
+        result[i][i] += nugget;
+    }
+    // Assign result to self.result
+}
+
 double OrdinaryKriging::SinglePoint(double Xo, double Yo, const std::vector<std::vector<double>>& training_points) {
     std::vector<std::vector<double>> points_to_use = (training_points.empty()) ? points_ : training_points;
 
