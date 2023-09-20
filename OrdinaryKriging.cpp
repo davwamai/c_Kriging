@@ -44,10 +44,11 @@ void OrdinaryKriging::MatrixSetup() {
         }
     }
     // vVariogram.set_a_C(a, C);
+    double h, C; 
     double result[points_.size() + 1][points_.size() + 1];
     for (int i = 0; i < points_.size(); i++) {
         for (int j = 0; j < points_.size(); j++) {
-            result[i][j] = variogramFunction_(1.0, distances[i][j], 1.0); //placeholder h and C values
+            result[i][j] = variogramFunction_(h, distances[i][j], C); //placeholder h and C values
         }
     }
     for (int i = 0; i < points_.size() + 1; i++) {
