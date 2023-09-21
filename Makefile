@@ -1,19 +1,19 @@
-# Compiler and flags
+# compiler and flags
 CXX = g++
 CXXFLAGS = -std=c++11 -O3 -Wall
 
-# Include paths for Eigen and NLopt
+# include paths for Eigen and NLopt
 INCLUDES = -I./includes/eigen -I/usr/local/include
 
-# Library paths for NLopt
+# library paths for NLopt
 LDFLAGS = -L/usr/local/lib
 LDLIBS = -lnlopt -lm
 
-# Source and object files
+# source and object files
 SRCS = OrdinaryKriging.cpp UniversalKriging.cpp Variograms.cpp main.cpp
 OBJS = $(SRCS:.cpp=.o)
 
-# Target executable
+# target executable
 TARGET = kriging
 
 all: $(TARGET)
