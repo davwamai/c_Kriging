@@ -1,5 +1,5 @@
 #include "./headers/Variograms.h"
-
+//Will more than likely abandon this and implement all the Varios in OK.cpp
 namespace Variogram {
 
 double Gaussian(double h, double a, double C) {
