@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -std=c++11 -O3 -Wall
 
 # include paths for Eigen and NLopt
-INCLUDES = -I./includes/eigen -I/usr/local/include
+INCLUDES = -I./includes/eigen -I/usr/local/include #make sure these point to the correct directories
 
 # library paths for NLopt
 LDFLAGS = -L/usr/local/lib

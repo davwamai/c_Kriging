@@ -21,7 +21,7 @@ void OrdinaryKriging::setupVariogram() {
     //TODO: Add other variogram models
 
     else {
-        std::cerr << "No valid variogram model selected" << std::endl;
+        std::cerr << "No valid Variogram model selected" << std::endl;
         exit(1);
     }
 }
