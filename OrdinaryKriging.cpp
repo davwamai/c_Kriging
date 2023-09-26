@@ -80,37 +80,37 @@ double OrdinaryKriging::SinglePoint(double Xo, double Yo, const std::vector<std:
 
 std::tuple<std::vector<double>, std::vector<double>, std::vector<std::vector<double>>>
 OrdinaryKriging::interpgrid(double grid_size) {
-// Determine the range of x and y from the input points
-double x_min = std::numeric_limits<double>::max();
-double x_max = std::numeric_limits<double>::lowest();
-double y_min = std::numeric_limits<double>::max();
-double y_max = std::numeric_limits<double>::lowest();
+    // Determine the range of x and y from the input points
+    double x_min = std::numeric_limits<double>::max();
+    double x_max = std::numeric_limits<double>::lowest();
+    double y_min = std::numeric_limits<double>::max();
+    double y_max = std::numeric_limits<double>::lowest();
 
-for (const auto& point : points_) {
-    x_min = std::min(x_min, point[0]);
-    x_max = std::max(x_max, point[0]);
-    y_min = std::min(y_min, point[1]);
-    y_max = std::max(y_max, point[1]);
-}
-
-// Generate the X and Y grids based on the determined range and grid_size
-std::vector<double> X, Y;
-for (double x = x_min; x <= x_max; x += grid_size) {
-    X.push_back(x);
-}
-
-    std::vector<std::vector<double>> Zout(X.size(), std::vector<double>(Y.size(), 0.0));
-    for (size_t i = 0; i < X.size(); ++i) {
-        for (size_t j = 0; j < Y.size(); ++j) {
-            Zout[i][j] = SinglePoint(X[i], Y[j]);
-        }
+    for (const auto& point : points_) {
+        x_min = std::min(x_min, point[0]);
+        x_max = std::max(x_max, point[0]);
+        y_min = std::min(y_min, point[1]);
+        y_max = std::max(y_max, point[1]);
     }
 
-    return {X, Y, Zout};
+    // Generate the X and Y grids based on the determined range and grid_size
+    std::vector<double> X, Y;
+    for (double x = x_min; x <= x_max; x += grid_size) {
+        X.push_back(x);
+    }
+
+        std::vector<std::vector<double>> Zout(X.size(), std::vector<double>(Y.size(), 0.0));
+        for (size_t i = 0; i < X.size(); ++i) {
+            for (size_t j = 0; j < Y.size(); ++j) {
+                Zout[i][j] = SinglePoint(X[i], Y[j]);
+            }
+        }
+
+        return {X, Y, Zout};
 }
 
 void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>& bounds) {
-
+    std::cout<< "Running Auto Optimize..." << std::endl;
     // Define the objective function for optimization
     auto objFunction = [&](const std::vector<double>& x) {
         double sill = x[0];
@@ -122,7 +122,7 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
         double sumZ = std::accumulate(zvals_.begin(), zvals_.end(), 0.0);
         double meanZ = sumZ / zvals_.size();
 
-
+        std::cout << "Performing LLO..." << std::endl;
         for (size_t i = 0; i < points_.size(); ++i) {
             // Create a new dataset excluding the i-th point
             std::vector<std::vector<double>> newPoints = points_;
@@ -141,6 +141,7 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
             actuals.push_back(zvals_[i]);
         }
 
+        std::cout << "Calculating R-squared..." << std::endl;
         // Calculate R-squared value
         double numerator = 0.0;
         double denominator = 0.0;
@@ -154,21 +155,24 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
         return 1.0 - rSquared;
     };
 
+    std::cout << "LD_LBFGS Optimizing..." << std::endl;
     nlopt::opt optimizer(nlopt::LD_LBFGS, 3);  // Using L-BFGS algorithm
     optimizer.set_min_objective(OrdinaryKriging::objfunctionWrapper, this);
     optimizer.set_xtol_rel(1e-4);
 
     std::vector<double> lbounds, ubounds;
+    std::cout << "Unpacking Bounds..." << std::endl;
     for (const auto& bound : bounds) {
         lbounds.push_back(bound.first);
         ubounds.push_back(bound.second);
     }
+    
     optimizer.set_lower_bounds(lbounds);
     optimizer.set_upper_bounds(ubounds);
 
     std::vector<double> x = {a_, C_, nugget_};
     double minf;
-    nlopt::result result = optimizer.optimize(x, minf);
+    nlopt::result result = optimizer.optimize(x, minf); //fails here
 
     a_ = x[0];
     C_ = x[1];

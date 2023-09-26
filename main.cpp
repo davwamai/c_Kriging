@@ -10,7 +10,7 @@
 
 int main() {
     // Read data from CSV
-    const std::string filename = "path_to_your_dataset.csv";
+    const std::string filename = "surface_roughness.csv";
     std::ifstream file(filename);
         std::string line;
         std::vector<std::vector<double>> points;
@@ -42,7 +42,8 @@ int main() {
     OrdinaryKriging krigingModel(points, zvals, "gaussian");
 
     // Optimize models parameters
-    std::vector<std::pair<double, double>> bounds = {{0.1, 10}, {0.1, 10}, {0, 5}}; // Find some comfortable bounds
+    std::vector<std::pair<double, double>> bounds = {{0.1, 10}, {0.1, 10}, {0.1, 5}}; // Find some comfortable bounds
+    krigingModel.ManualParamSet(1.0, 1.0, 1.0, 1.0); // Set initial parameters
     krigingModel.AutoOptimize(bounds);
 
     // Predict targets for the points in the dataset
@@ -56,10 +57,12 @@ int main() {
     double mse = 0.0;
     for (size_t i = 0; i < zvals.size(); i++) {
         mse += std::pow(zvals[i] - predictedZvals[i], 2);
+        std::cout << "Actual: " << zvals[i] << " Predicted: " << predictedZvals[i] << std::endl;
+        std::cout << "MSE at point " << i << ": " << std::pow(zvals[i] - predictedZvals[i], 2) << std::endl << std::endl; // Print MSE at each point
     }
     mse /= zvals.size();
 
-    std::cout << "MSE: " << mse << std::endl;
+    std::cout << "Total MSE: " << mse << std::endl;
 
     return 0;
 }
