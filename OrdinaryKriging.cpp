@@ -1,13 +1,13 @@
 #include "./headers/OrdinaryKriging.h"
 #include <cmath>
+#include <numeric>
 #include <iostream>
-#include <Eigen/Dense>  // For matrix operations
 #include <nlopt.hpp>
 
 OrdinaryKriging::OrdinaryKriging(const std::vector<std::vector<double>>& points, 
                                  const std::vector<double>& zvals, 
                                  const std::string& variogram)
-    : points_(points), zvals_(zvals), variogram_(variogram) {
+    : points_(points), zvals_(zvals), variogram_(variogram), anisotropy_(1.0) {
     zvals_org_ = zvals_;  // Copy of the original z values
     setupVariogram();
 }
@@ -40,12 +40,12 @@ Eigen::MatrixXd OrdinaryKriging::MatrixSetup() {
     for (size_t i = 0; i < n; i++) {
         for (size_t j = 0; j < n; j++) {
             if (i == j) {
-                A(i, j) = variogram_(0.0, a_, C_) + nugget_;  // Diagonal element (distance = 0), if I read the paper correctly...
+                A(i, j) = variogramFunction_(0.0, a_, C_) + nugget_;  // Diagonal element (distance = 0), if I read the paper correctly...
             } else {
                 double dx = points_[i][0] - points_[j][0];
                 double dy = points_[i][1] - points_[j][1];
                 double distance = std::sqrt(dx * dx + dy * dy);
-                A(i, j) = variogram_(distance, a_, C_);
+                A(i, j) = variogramFunction_(distance, a_, C_);
             }
         }
     }
@@ -53,15 +53,13 @@ Eigen::MatrixXd OrdinaryKriging::MatrixSetup() {
     return A;
 }
 
-
-
 double OrdinaryKriging::SinglePoint(double Xo, double Yo, const std::vector<std::vector<double>>& training_points) {
     std::vector<std::vector<double>> points_to_use = (training_points.empty()) ? points_ : training_points;
 
     std::vector<double> distances_to_point0(points_to_use.size());
     for (size_t i = 0; i < points_to_use.size(); ++i) {
         distances_to_point0[i] = std::sqrt(std::pow(points_to_use[i][0] - Xo, 2) + 
-                                           std::pow(points_to_use[i][1] - Yo, 2) / (anisotropy_factor_ * anisotropy_factor_));
+                                           std::pow(points_to_use[i][1] - Yo, 2) / (anisotropy_ * anisotropy_));
     }
 
     Eigen::VectorXd vectorb(points_to_use.size() + 1);
@@ -111,31 +109,36 @@ for (double x = x_min; x <= x_max; x += grid_size) {
     return {X, Y, Zout};
 }
 
-void OrdinaryKriging::AutoOptimize() {
+void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>& bounds) {
+
     // Define the objective function for optimization
     auto objFunction = [&](const std::vector<double>& x) {
         double sill = x[0];
         double range = x[1];
-        double anisotropy = x[2];
+        double nugget = x[2];
         
         std::vector<double> predictions;
         std::vector<double> actuals;
-        double meanZ = CalculateMean(Z_);  // Assuming Z_ is the member variable for Z values
+        double sumZ = std::accumulate(zvals_.begin(), zvals_.end(), 0.0);
+        double meanZ = sumZ / zvals_.size();
+
 
         for (size_t i = 0; i < points_.size(); ++i) {
             // Create a new dataset excluding the i-th point
             std::vector<std::vector<double>> newPoints = points_;
             newPoints.erase(newPoints.begin() + i);
-            std::vector<double> newZ = Z_;
+            std::vector<double> newZ = zvals_;
             newZ.erase(newZ.begin() + i);
 
             // Create a new OrdinaryKriging model with the new dataset
-            OrdinaryKriging model(newPoints, newZ, sill, range, anisotropy);
+            // OrdinaryKriging model(newPoints, newZ, sill, range, nugget);
+            OrdinaryKriging model(newPoints, newZ, "gaussian");
+
             
             // Predict the value at the i-th point
             double prediction = model.Predict(points_[i]);
             predictions.push_back(prediction);
-            actuals.push_back(Z_[i]);
+            actuals.push_back(zvals_[i]);
         }
 
         // Calculate R-squared value
@@ -152,13 +155,14 @@ void OrdinaryKriging::AutoOptimize() {
     };
 
     nlopt::opt optimizer(nlopt::LD_LBFGS, 3);  // Using L-BFGS algorithm
-    optimizer.set_min_objective(objFunction, nullptr);
+    optimizer.set_min_objective(OrdinaryKriging::objfunctionWrapper, this);
     optimizer.set_xtol_rel(1e-4);
 
-    //
-    // Assuming bounds for the parameters are known or can be estimated
-    std::vector<double> lbounds = {0.0, 0.0, 0.0};  // Placeholder lower bounds
-    std::vector<double> ubounds = {10.0, 10.0, 10.0};  // Placeholder upper bounds
+    std::vector<double> lbounds, ubounds;
+    for (const auto& bound : bounds) {
+        lbounds.push_back(bound.first);
+        ubounds.push_back(bound.second);
+    }
     optimizer.set_lower_bounds(lbounds);
     optimizer.set_upper_bounds(ubounds);
 
@@ -187,7 +191,9 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
         newZ.erase(newZ.begin() + i);
 
         // Create a new OrdinaryKriging model with the new dataset and current parameters
-        OrdinaryKriging model(newPoints, newZ, sill, range, nugget);
+        // OrdinaryKriging model(newPoints, newZ, sill, range, nugget);
+        OrdinaryKriging model(newPoints, newZ, "gaussian");
+
         
         // Predict the value at the i-th point
         double prediction = model.Predict(points_[i]);
@@ -200,7 +206,7 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
     return errorSum;
 }
 
-//nned a wrapper for nlopt, expects a double ret from OK class
+//Nned a wrapper for nlopt, expects a double ret from OK class
 //L-BFGS is not gradient based so grad param can be ignored, pass a gradient if using a derivative based method
 double OrdinaryKriging::objfunctionWrapper(const std::vector<double>& x, std::vector<double>& grad, void* data) {
     OrdinaryKriging* kriging = reinterpret_cast<OrdinaryKriging*>(data);
@@ -221,14 +227,14 @@ double OrdinaryKriging::Predict(const std::vector<double>& point) {
         distances(i) = std::sqrt(dx * dx + dy * dy);
     }
 
-    // Set up the kriging system
+    // Set up 
     Eigen::MatrixXd A = MatrixSetup();
     Eigen::VectorXd b(points_.size());
     for (size_t i = 0; i < points_.size(); i++) {
-        b(i) = variogram_(distances(i), a_, C_);
+        b(i) = variogramFunction_(distances(i), a_, C_);
     }
 
-    // Solve for kriging weights
+    // Solve for weights
     Eigen::VectorXd weights = A.colPivHouseholderQr().solve(b); //No clue how this works but Eigen said it would be better than solving in static
 
     // Compute prediction
