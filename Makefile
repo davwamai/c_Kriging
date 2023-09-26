@@ -4,11 +4,13 @@ CXXFLAGS = -std=c++11 -O3 -Wall
 
 # include paths for Eigen and NLopt
 # INCLUDES = -I./includes/eigen -I/usr/local/include #make sure these point to the correct directories
-INCLUDES = -I./includes/eigen -I/mnt/c/Users/dwamai/nloptinstall/include #make sure these point to the correct directories
+# INCLUDES = -I./includes/eigen -I/mnt/c/Users/dwamai/nloptinstall/include #lab pc
+INCLUDES = -I./includes/eigen -I/opt/homebrew/Cellar/nlopt/2.7.1/include #mac
 
 # library paths for NLopt
 # LDFLAGS = -L/usr/local/lib
-LDFLAGS =  -L/mnt/c/Users/dwamai/nloptinstall/lib
+# LDFLAGS =  -L/mnt/c/Users/dwamai/nloptinstall/lib #lab pc
+LDFLAGS =  -L/opt/homebrew/Cellar/nlopt/2.7.1/lib #mac
 LDLIBS = -lnlopt -lm
 
 # source and object files
