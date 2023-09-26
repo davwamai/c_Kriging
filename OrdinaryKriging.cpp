@@ -112,7 +112,7 @@ OrdinaryKriging::interpgrid(double grid_size) {
 void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>& bounds) {
     std::cout<< "Running Auto Optimize..." << std::endl;
     // Define the objective function for optimization
-    auto objFunction = [&](const std::vector<double>& x) {
+    auto objFunction = [&](const std::vector<double>& x) { //not used but I like how this one is written
         double sill = x[0];
         double range = x[1];
         double nugget = x[2];
@@ -172,11 +172,21 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
 
     std::vector<double> x = {a_, C_, nugget_};
     double minf;
-    nlopt::result result = optimizer.optimize(x, minf); //fails here
+    nlopt::result result = optimizer.optimize(x, minf); //fails here  
+
+    std::cout << "Optimized Contained Parameters: " << std::endl;
+    std::cout << "a: " << x[0] << std::endl;
+    std::cout << "C: " << x[1] << std::endl;
+    std::cout << "nugget: " << x[2] << std::endl;
 
     a_ = x[0];
     C_ = x[1];
     nugget_ = x[2];
+
+    std::cout << "Optimized Parameters: " << std::endl;
+    std::cout << "a: " << a_ << std::endl;
+    std::cout << "C: " << C_ << std::endl;
+    std::cout << "nugget: " << nugget_ << std::endl;
 }
 
 
