@@ -6,7 +6,7 @@
 #include <string>
 #include <tuple>
 #include <cmath>
-
+#include <random>
 
 int main() {
     // // Read data from CSV
@@ -65,8 +65,18 @@ int main() {
     OrdinaryKriging krigingModel(points, zi, "gaussian");
 
     // Optimize models parameters
-    std::vector<std::pair<double, double>> bounds = {{0.1, 10}, {0.1, 10}, {0.1, 5}}; // Find some comfortable bounds
-    krigingModel.ManualParamSet(1.0, 1.0, 1.0, 1.0); // Set initial parameters
+    std::vector<std::pair<double, double>> bounds = {{0.1, 10}, {0.1, 10}, {0.1, 10}, {0.1, 10}}; // Find some comfortable bounds
+
+    //Generates four random doubles to place in ManualParamSet
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.1, 10);
+    double a = dis(gen);
+    double C = dis(gen);
+    double nugget = dis(gen);
+    double anisotropy_factor = dis(gen);
+    krigingModel.ManualParamSet(C, a, nugget, anisotropy_factor); // Set initial parameters, LMAO
+
     krigingModel.AutoOptimize(bounds);
 
     // Predict targets for the points in the dataset
@@ -85,7 +95,7 @@ int main() {
     }
     mse /= zi.size();
 
-    std::cout << "Total MSE: " << mse << std::endl;
+    std::cout << "Overall MSE: " << mse << std::endl;
 
     return 0;
 }

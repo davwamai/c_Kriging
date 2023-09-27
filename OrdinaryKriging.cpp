@@ -7,7 +7,7 @@
 OrdinaryKriging::OrdinaryKriging(const std::vector<std::vector<double>>& points, 
                                  const std::vector<double>& zvals, 
                                  const std::string& variogram)
-    : points_(points), zvals_(zvals), variogram_(variogram), anisotropy_(1.0) {
+    : points_(points), zvals_(zvals), variogram_(variogram) {
     zvals_org_ = zvals_;  // Copy of the original z values
     setupVariogram();
 }
@@ -59,7 +59,7 @@ double OrdinaryKriging::SinglePoint(double Xo, double Yo, const std::vector<std:
     std::vector<double> distances_to_point0(points_to_use.size());
     for (size_t i = 0; i < points_to_use.size(); ++i) {
         distances_to_point0[i] = std::sqrt(std::pow(points_to_use[i][0] - Xo, 2) + 
-                                           std::pow(points_to_use[i][1] - Yo, 2) / (anisotropy_ * anisotropy_));
+                                           std::pow(points_to_use[i][1] - Yo, 2) / (anisotropy_factor_ * anisotropy_factor_));
     }
 
     Eigen::VectorXd vectorb(points_to_use.size() + 1);
@@ -109,13 +109,56 @@ OrdinaryKriging::interpgrid(double grid_size) {
         return {X, Y, Zout};
 }
 
+//this shit is fuuuuuuucked lmao
 void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>& bounds) {
     std::cout<< "Running Auto Optimize..." << std::endl;
-    // Define the objective function for optimization
-    auto objFunction = [&](const std::vector<double>& x) { //not used but I like how this one is written
+
+    std::cout << "LD_LBFGS Optimizing..." << std::endl;
+    nlopt::opt optimizer(nlopt::LD_LBFGS, 4);  // Using L-BFGS algorithm
+    optimizer.set_min_objective(OrdinaryKriging::objfunctionWrapper, this);
+    optimizer.set_xtol_rel(1e-4);
+
+    std::vector<double> lbounds, ubounds;
+    std::cout << "Unpacking Bounds..." << std::endl;
+    for (const auto& bound : bounds) {
+        lbounds.push_back(bound.first);
+        ubounds.push_back(bound.second);
+    }
+    
+    optimizer.set_lower_bounds(lbounds);
+    optimizer.set_upper_bounds(ubounds);
+
+    std::cout << "Unoptimized Parameters: " << std::endl;
+    std::cout << "a: " << a_ << std::endl;
+    std::cout << "C: " << C_ << std::endl;
+    std::cout << "nugget: " << nugget_ << std::endl;
+    std::cout << "anisotropy_factor: " << anisotropy_factor_ << std::endl;
+    std::cout << "\n" << std::endl;
+
+    std::vector<double> x = {a_, C_, nugget_, anisotropy_factor_};
+    double minf;
+    nlopt::result result = optimizer.optimize(x, minf); //failing here  
+
+    a_ = x[0];
+    C_ = x[1];
+    nugget_ = x[2];
+    anisotropy_factor_ = x[3];
+
+    std::cout << "Optimized Parameters: " << std::endl;
+    std::cout << "a: " << a_ << std::endl;
+    std::cout << "C: " << C_ << std::endl;
+    std::cout << "nugget: " << nugget_ << std::endl;
+    std::cout << "anisotropy_factor: " << anisotropy_factor_ << std::endl;
+    std::cout << "\n" << std::endl;
+
+}
+
+
+double OrdinaryKriging::objfunction(const std::vector<double>& x) {
         double sill = x[0];
         double range = x[1];
         double nugget = x[2];
+        double anisotropy_factor = x[3];
         
         std::vector<double> predictions;
         std::vector<double> actuals;
@@ -131,10 +174,9 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
             newZ.erase(newZ.begin() + i);
 
             // Create a new OrdinaryKriging model with the new dataset
-            // OrdinaryKriging model(newPoints, newZ, sill, range, nugget);
             OrdinaryKriging model(newPoints, newZ, "gaussian");
+            model.ManualParamSet(x[1], x[0], x[2], x[3]);
 
-            
             // Predict the value at the i-th point
             double prediction = model.Predict(points_[i]);
             predictions.push_back(prediction);
@@ -151,73 +193,11 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
         }
         double rSquared = 1.0 - (numerator / denominator);
 
+        std::cout << "R-squared: " << rSquared << std::endl;
         // Return 1 - R-squared to minimize it
         return 1.0 - rSquared;
-    };
-
-    std::cout << "LD_LBFGS Optimizing..." << std::endl;
-    nlopt::opt optimizer(nlopt::LD_LBFGS, 3);  // Using L-BFGS algorithm
-    optimizer.set_min_objective(OrdinaryKriging::objfunctionWrapper, this);
-    optimizer.set_xtol_rel(1e-4);
-
-    std::vector<double> lbounds, ubounds;
-    std::cout << "Unpacking Bounds..." << std::endl;
-    for (const auto& bound : bounds) {
-        lbounds.push_back(bound.first);
-        ubounds.push_back(bound.second);
-    }
-    
-    optimizer.set_lower_bounds(lbounds);
-    optimizer.set_upper_bounds(ubounds);
-
-    std::vector<double> x = {a_, C_, nugget_};
-    double minf;
-    nlopt::result result = optimizer.optimize(x, minf); //fails here  
-
-    std::cout << "Optimized Contained Parameters: " << std::endl;
-    std::cout << "a: " << x[0] << std::endl;
-    std::cout << "C: " << x[1] << std::endl;
-    std::cout << "nugget: " << x[2] << std::endl;
-
-    a_ = x[0];
-    C_ = x[1];
-    nugget_ = x[2];
-
-    std::cout << "Optimized Parameters: " << std::endl;
-    std::cout << "a: " << a_ << std::endl;
-    std::cout << "C: " << C_ << std::endl;
-    std::cout << "nugget: " << nugget_ << std::endl;
-}
 
 
-double OrdinaryKriging::objfunction(const std::vector<double>& x) {
-    double sill = x[0];
-    double range = x[1];
-    double nugget = x[2];
-
-    double errorSum = 0.0;
-
-    for (size_t i = 0; i < points_.size(); i++) {
-        // Create a new dataset excluding the i-th point
-        std::vector<std::vector<double>> newPoints = points_;
-        newPoints.erase(newPoints.begin() + i);
-        std::vector<double> newZ = zvals_;
-        newZ.erase(newZ.begin() + i);
-
-        // Create a new OrdinaryKriging model with the new dataset and current parameters
-        // OrdinaryKriging model(newPoints, newZ, sill, range, nugget);
-        OrdinaryKriging model(newPoints, newZ, "gaussian");
-
-        
-        // Predict the value at the i-th point
-        double prediction = model.Predict(points_[i]);
-        double actual = zvals_[i];
-
-        // Compute the squared error for this point
-        errorSum += std::pow(actual - prediction, 2);
-    }
-
-    return errorSum;
 }
 
 //Nned a wrapper for nlopt, expects a double ret from OK class
