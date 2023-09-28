@@ -181,6 +181,7 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
             predictions.push_back(prediction);
             actuals.push_back(zvals_[i]);
         }
+
         // Calculate R-squared value
         double numerator = 0.0;
         double denominator = 0.0;
@@ -188,7 +189,7 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
             numerator += std::pow(actuals[i] - predictions[i], 2);
             denominator += std::pow(actuals[i] - meanZ, 2);
         }
-        double rSquared = 1.0 - (numerator / denominator);
+        double rSquared = 1.0 - (numerator / denominator);  
 
         // std::cout << "R squared: " << rSquared << std::endl;
 

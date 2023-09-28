@@ -83,16 +83,28 @@ int main() {
         predictedZvals.push_back(predictedZ);
     }
 
+    //calculates r squared value for the model
+    double sumZ = std::accumulate(zi.begin(), zi.end(), 0.0);
+    double meanZ = sumZ / zi.size();
+    double ss_tot = 0.0;
+    double ss_res = 0.0;
+    for (size_t i = 0; i < zi.size(); i++) {
+        ss_tot += std::pow(zi[i] - meanZ, 2);
+        ss_res += std::pow(zi[i] - predictedZvals[i], 2);
+    }
+    double r_squared = 1 - (ss_res / ss_tot);
+    std::cout << "ss_tot: " << ss_tot << std::endl;
+    std::cout << "ss_res: " << ss_res << std::endl;
+
     // Compute MSE
     double mse = 0.0;
     for (size_t i = 0; i < zi.size(); i++) {
         mse += std::pow(zi[i] - predictedZvals[i], 2);
-        std::cout << "Actual: " << zi[i] << " Predicted: " << predictedZvals[i] << std::endl;
-        std::cout << "MSE at point " << i << ": " << std::pow(zi[i] - predictedZvals[i], 2) << std::endl << std::endl; // Print MSE at each point
     }
     mse /= zi.size();
 
     std::cout << "Overall MSE: " << mse << std::endl;
+    std::cout << "Overall r^2: " << r_squared << std::endl;
 
     return 0;
 }
