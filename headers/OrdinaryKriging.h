@@ -50,6 +50,8 @@ public:
 private:
     static double objfunctionWrapper(const std::vector<double>& x, std::vector<double>& grad, void* data);
     double objfunction(const std::vector<double>& x);
+    void computeGradientCentralDifference(const std::vector<double>& x, std::vector<double>& grad);
+    double gradientCallback(const std::vector<double> &x, std::vector<double> &grad, void *data);
 
 public: 
     double Predict(const std::vector<double>& point);

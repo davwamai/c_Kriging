@@ -8,35 +8,29 @@
 #include <cmath>
 #include <random>
 
+double variance(const std::vector<double>& zvals) {
+    double mean = std::accumulate(zvals.begin(), zvals.end(), 0.0) / zvals.size();
+    double sq_sum = std::inner_product(zvals.begin(), zvals.end(), zvals.begin(), 0.0);
+    double var = sq_sum / zvals.size() - mean * mean;
+    return var;
+}
+
+double maxPairwiseDistance(const std::vector<std::vector<double>>& points) {
+    double maxDist = 0.0;
+    for (size_t i = 0; i < points.size(); ++i) {
+        for (size_t j = i + 1; j < points.size(); ++j) {
+            double dist = 0.0;
+            for (size_t k = 0; k < points[i].size(); ++k) {
+                dist += (points[i][k] - points[j][k]) * (points[i][k] - points[j][k]);
+            }
+            maxDist = std::max(maxDist, std::sqrt(dist));
+        }
+    }
+    return maxDist;
+}
+
 int main() {
-    // // Read data from CSV
-    // const std::string filename = "surface_roughness.csv";
-    // std::ifstream file(filename);
-    //     std::string line;
-    //     std::vector<std::vector<double>> points;
-    //     std::vector<double> zvals;
-
-    //     while (std::getline(file, line)) {
-    //         std::stringstream ss(line);
-    //         std::string cell;
-    //         std::vector<double> point(2);  // x and y values
-    //         double z;  // target value
-    //         int colIndex = 0;
-
-    //         while (std::getline(ss, cell, ',')) {
-    //             if (colIndex == 0) {
-    //                 point[0] = std::stod(cell);
-    //             } else if (colIndex == 1) {
-    //                 point[1] = std::stod(cell);
-    //             } else if (colIndex == 4) {
-    //                 z = std::stod(cell);
-    //             }
-    //             colIndex++;
-    //         }
-    //         points.push_back(point);
-    //         zvals.push_back(z);
-    //     }
-
+    
     int xi_col = 0;
     int yi_col = 1;
     int zi_col = 4;
@@ -60,21 +54,24 @@ int main() {
         zi.push_back(row[zi_col]);
     }
 
-
     // Instantiate model
     OrdinaryKriging krigingModel(points, zi, "gaussian");
 
     // Optimize models parameters
-    std::vector<std::pair<double, double>> bounds = {{0.1, 10}, {0.1, 10}, {0.1, 10}, {0.1, 10}}; // Find some comfortable bounds
+    std::vector<std::pair<double, double>> bounds = {{15, 30}, {1900, 2000}, {0.001, 10}, {0.1, 10}}; // Find some comfortable bounds
 
-    //Generates four random doubles to place in ManualParamSet
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<> dis(0.1, 10);
-    double a = dis(gen);
-    double C = dis(gen);
-    double nugget = dis(gen);
-    double anisotropy_factor = dis(gen);
+    std::vector<double> InitialParams = {
+        variance(zi),
+        maxPairwiseDistance(points) / 2,
+        0.001,
+        1.0
+    };
+
+    double a = InitialParams[0];
+    double C = InitialParams[1];
+    double nugget = InitialParams[2];
+    double anisotropy_factor = InitialParams[3];
+
     krigingModel.ManualParamSet(C, a, nugget, anisotropy_factor); // Set initial parameters, LMAO
 
     krigingModel.AutoOptimize(bounds);

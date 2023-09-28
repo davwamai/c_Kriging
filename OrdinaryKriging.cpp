@@ -153,7 +153,6 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
 
 }
 
-
 double OrdinaryKriging::objfunction(const std::vector<double>& x) {
         double sill = x[0];
         double range = x[1];
@@ -165,7 +164,7 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
         double sumZ = std::accumulate(zvals_.begin(), zvals_.end(), 0.0);
         double meanZ = sumZ / zvals_.size();
 
-        std::cout << "Performing LLO..." << std::endl;
+        // std::cout << "Performing LLO..." << std::endl;
         for (size_t i = 0; i < points_.size(); ++i) {
             // Create a new dataset excluding the i-th point
             std::vector<std::vector<double>> newPoints = points_;
@@ -182,8 +181,6 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
             predictions.push_back(prediction);
             actuals.push_back(zvals_[i]);
         }
-
-        std::cout << "Calculating R-squared..." << std::endl;
         // Calculate R-squared value
         double numerator = 0.0;
         double denominator = 0.0;
@@ -193,18 +190,42 @@ double OrdinaryKriging::objfunction(const std::vector<double>& x) {
         }
         double rSquared = 1.0 - (numerator / denominator);
 
-        std::cout << "R-squared: " << rSquared << std::endl;
+        // std::cout << "R squared: " << rSquared << std::endl;
+
         // Return 1 - R-squared to minimize it
         return 1.0 - rSquared;
-
-
 }
 
 //Nned a wrapper for nlopt, expects a double ret from OK class
-//L-BFGS is not gradient based so grad param can be ignored, pass a gradient if using a derivative based method
+//L-BFGS is gradient based but grad param can still be ignored, pass a gradient if using a derivative based method
+//the 'real' wrapper is the Gradient Callback
 double OrdinaryKriging::objfunctionWrapper(const std::vector<double>& x, std::vector<double>& grad, void* data) {
     OrdinaryKriging* kriging = reinterpret_cast<OrdinaryKriging*>(data);
+    kriging->computeGradientCentralDifference(x, grad);
     return kriging->objfunction(x);
+}
+
+void OrdinaryKriging::computeGradientCentralDifference(const std::vector<double>& x, std::vector<double>& grad) {
+    double delta = 1e-6; // small perturbation value
+    double forwardObj, backwardObj;
+
+    for (size_t i = 0; i < x.size(); i++) {
+        std::vector<double> forwardX = x;
+        std::vector<double> backwardX = x;
+
+        forwardX[i] += delta;
+        backwardX[i] -= delta;
+
+        forwardObj = objfunction(forwardX);
+        backwardObj = objfunction(backwardX);
+
+        grad[i] = (forwardObj - backwardObj) / (2 * delta);
+    }
+}
+
+double OrdinaryKriging::gradientCallback(const std::vector<double> &x, std::vector<double> &grad, void *data) {
+    computeGradientCentralDifference(x, grad);
+    return objfunctionWrapper(x, grad, data);
 }
 
 double OrdinaryKriging::Predict(const std::vector<double>& point) {
@@ -221,7 +242,6 @@ double OrdinaryKriging::Predict(const std::vector<double>& point) {
         distances(i) = std::sqrt(dx * dx + dy * dy);
     }
 
-    // Set up 
     Eigen::MatrixXd A = MatrixSetup();
     Eigen::VectorXd b(points_.size());
     for (size_t i = 0; i < points_.size(); i++) {
@@ -239,6 +259,8 @@ double OrdinaryKriging::Predict(const std::vector<double>& point) {
 
     return prediction;
 }
+
+
 
 
 
