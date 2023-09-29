@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UNIVERSAL_KRIGING_H
+#define UNIVERSAL_KRIGING_H
 #include "OrdinaryKriging.h"
 #include <nlopt.hpp>
 
@@ -31,5 +32,6 @@ private:
     static double objfunctionWithTrendWrapper(const std::vector<double>& x, std::vector<double>& grad, void* data);
     double objfunctionWithTrend(const std::vector<double>& x, std::vector<double>& grad);
 };
+#endif // UNIVERSAL_KRIGING_H
 
 
