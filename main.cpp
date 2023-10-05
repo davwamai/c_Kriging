@@ -7,6 +7,7 @@
 #include <tuple>
 #include <cmath>
 #include <random>
+#include <chrono>
 
 double variance(const std::vector<double>& zvals) {
     double mean = std::accumulate(zvals.begin(), zvals.end(), 0.0) / zvals.size();
@@ -53,11 +54,18 @@ int main() {
         points.push_back({row[xi_col], row[yi_col]});
         zi.push_back(row[zi_col]);
     }
+    //timing functionality 
+    typedef std::chrono::high_resolution_clock Clock;
+    typedef std::chrono::milliseconds ms;
+    typedef std::chrono::microseconds us;
+    typedef std::chrono::duration<float> fsec;
 
     // Instantiate model
     OrdinaryKriging krigingModel(points, zi, "gaussian");
 
     // Optimize models parameters
+
+    auto t0 = Clock::now();
     std::vector<std::pair<double, double>> bounds = {{15, 30}, {1900, 2000}, {0.001, 10}, {0.1, 10}}; // Find some comfortable bounds
 
     std::vector<double> InitialParams = {
@@ -75,6 +83,8 @@ int main() {
     krigingModel.ManualParamSet(C, a, nugget, anisotropy_factor); // Set initial parameters, LMAO
 
     krigingModel.AutoOptimize(bounds);
+    auto t1 = Clock::now();
+
 
     // Predict targets for the points in the dataset
     std::vector<double> predictedZvals;
@@ -82,7 +92,7 @@ int main() {
         double predictedZ = krigingModel.Predict(point);
         predictedZvals.push_back(predictedZ);
     }
-
+    auto t2 = Clock::now();
     //calculates r squared value for the model
     double sumZ = std::accumulate(zi.begin(), zi.end(), 0.0);
     double meanZ = sumZ / zi.size();
@@ -100,6 +110,10 @@ int main() {
         mse += std::pow(zi[i] - predictedZvals[i], 2);
     }
     mse /= zi.size();
+
+    // Print results
+    std::cout << "Optimization time: " << std::chrono::duration_cast<ms>(t1 - t0).count() << " ms" << std::endl;
+    std::cout << "Prediction time: " << std::chrono::duration_cast<us>(t2 - t1).count() << " us" << std::endl;
 
     std::cout << "Overall MSE: " << mse << std::endl;
     std::cout << "Overall r^2: " << r_squared << std::endl;
