@@ -41,7 +41,7 @@ private:
     std::vector<std::vector<double>> result_;
 };
 
-#endif 
+#endif // ORDINARY_KRIGING_H
 
 
 

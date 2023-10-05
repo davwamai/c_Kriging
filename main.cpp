@@ -93,8 +93,6 @@ int main() {
         ss_res += std::pow(zi[i] - predictedZvals[i], 2);
     }
     double r_squared = 1 - (ss_res / ss_tot);
-    std::cout << "ss_tot: " << ss_tot << std::endl;
-    std::cout << "ss_res: " << ss_res << std::endl;
 
     // Compute MSE
     double mse = 0.0;

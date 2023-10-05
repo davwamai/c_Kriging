@@ -154,10 +154,6 @@ void OrdinaryKriging::AutoOptimize(const std::vector<std::pair<double, double>>&
 }
 
 double OrdinaryKriging::objfunction(const std::vector<double>& x) {
-        double sill = x[0];
-        double range = x[1];
-        double nugget = x[2];
-        double anisotropy_factor = x[3];
         
         std::vector<double> predictions;
         std::vector<double> actuals;
