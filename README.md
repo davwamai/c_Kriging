@@ -1,2 +1,2 @@
 # c_Kriging
-literally the worst cpp ive ever written in my life
+Experimental implementation of the Ordinary Kriging algorithm leveraging Kullback–Leibler divergence and Leave-One-Out Optimization
